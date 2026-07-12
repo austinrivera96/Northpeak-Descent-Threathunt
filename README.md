@@ -160,7 +160,11 @@ DeviceLogonEvents
 ### 🖼️ Screenshot
 <img width="1262" height="277" alt="image" src="https://github.com/user-attachments/assets/248d5efe-217c-40d8-bbb4-bf87a31007f2" />
 
-Answer: npt-ws01, 148.64.103.173
+**Answer:** 
+npt-ws01, 148.64.103.173
+
+</details>
+
 ---
 
 <details>
@@ -203,11 +207,13 @@ DeviceLogonEvents
 ### 🖼️ Screenshot
 <img width="1162" height="325" alt="image" src="https://github.com/user-attachments/assets/db4c8bf8-dfdc-49a6-8ed7-e256b0f62709" />
 
-Answer: npt-ws01, 148.64.103.173
+**Answer:** 
+npt-ws01, 148.64.103.173
 
 </details>
 
 ---
+
 <details>
 <summary id="-flag-3">🚩 <strong>Flag 3: The Real Foothold <Technique Name></strong></summary>
 
@@ -243,9 +249,11 @@ The attacker gained a foothold into the Windows System.
 <Actionable guidance for defenders>
 
 </details>
+
 ---
+
 <details>
-<summary id="-flag-1">🚩 <strong>Flag 2: The Real Foothold <Technique Name></strong></summary>
+<summary id="-flag-4">🚩 <strong>Flag 4: The Real Foothold <Technique Name></strong></summary>
 
 ### 🎯 Objective
 The attacker gained a foothold into the Windows System. 
@@ -275,7 +283,7 @@ The attacker gained a foothold into the Windows System.
 
 ### 🛠️ Detection Recommendation
 
-**Hunting Tip:**  
+**Answer:**  
 <Actionable guidance for defenders>
 
 </details>
