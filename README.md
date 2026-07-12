@@ -204,6 +204,9 @@ DeviceLogonEvents
 <img width="1162" height="325" alt="image" src="https://github.com/user-attachments/assets/db4c8bf8-dfdc-49a6-8ed7-e256b0f62709" />
 
 Answer: npt-ws01, 148.64.103.173
+
+</details>
+
 ---
 <details>
 <summary id="-flag-1">🚩 <strong>Flag 2: The Real Foothold <Technique Name></strong></summary>
