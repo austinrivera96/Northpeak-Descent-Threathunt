@@ -164,7 +164,7 @@ Answer: npt-ws01, 148.64.103.173
 ---
 
 <details>
-<summary id="-flag-2">🚩 <strong>Flag 2: First Foothold, Ordering <Technique Name></strong></summary>
+<summary id="-flag-2">🚩 <strong>Flag 2: First Foothold, Ordering <Technique Name></strong> </summary>
 
 ### 🎯 Objective
 While investigating it may seem, due to the noise, that the Linux workstation was the first foothold. The true first foothold is the windows workstation. 
@@ -209,7 +209,7 @@ Answer: npt-ws01, 148.64.103.173
 
 ---
 <details>
-<summary id="-flag-1">🚩 <strong>Flag 2: The Real Foothold <Technique Name></strong></summary>
+<summary id="-flag-3">🚩 <strong>Flag 3: The Real Foothold <Technique Name></strong></summary>
 
 ### 🎯 Objective
 The attacker gained a foothold into the Windows System. 
