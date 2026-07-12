@@ -33,8 +33,10 @@ The investigation reconstructs the complete attack chain, identigying the initia
 
 - **Environment:**
   -  Northpeak Logistics enterprise environment (Windows workstations and servers, Linux host, Microsoft Sentinel & Microsoft Defender for Endpoint)
-- **Data Sources:**  
-- **Timeframe:** <YYYY-MM-DD → YYYY-MM-DD>  
+- **Data Sources:**
+  -  Microsoft Defender XDR (DeviceProcessEvents, DeviceLogonEvents, DeviceNetworkEvents, DeviceRegistryEvents, DeviceFileEvents, DeviceEvents) and Microsoft Sentinel Log Analytics
+- **Timeframe:**
+  - 2026-06-16 → 2026-06-17 (20:00 UTC on June 16 through 00:30 UTC on June 17)
 
 ---
 
