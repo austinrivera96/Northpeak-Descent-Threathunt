@@ -147,6 +147,7 @@ The primary risk is that compromised credentials combined with RDP access provid
 This finding is significant because the intrusion relied on legitimate authentication mechanisms rather than malware or exploitation. Monitoring abnormal RDP authentication attempts, external RDP exposure, unusual source IP addresses, and privileged account usage is critical for detecting similar valid-account attacks.
 
 ### 🔧 KQL Query Used
+```kql
 DeviceLogonEvents
 | where DeviceName has_any ("npt-ws01","npt-srv01","npt-linux01")
 | where Timestamp between (datetime(2026-06-16 20:00:00) .. datetime(2026-06-17 00:30:00))
@@ -154,7 +155,7 @@ DeviceLogonEvents
 | where LogonType contains "remote" or LogonType contains "interactive"
 | project DeviceName, AccountName, TimeGenerated, LogonType, ActionType, Protocol
 | order by TimeGenerated asc 
-
+```
 
 ### 🖼️ Screenshot
 <img width="1262" height="277" alt="image" src="https://github.com/user-attachments/assets/248d5efe-217c-40d8-bbb4-bf87a31007f2" />
@@ -163,7 +164,7 @@ Answer: npt-ws01, 148.64.103.173
 ---
 
 <details>
-<summary id="-flag-1">🚩 <strong>Flag 2: First Foothold, Ordering <Technique Name></strong></summary>
+<summary id="-flag-2">🚩 <strong>Flag 2: First Foothold, Ordering <Technique Name></strong></summary>
 
 ### 🎯 Objective
 While investigating it may seem, due to the noise, that the Linux workstation was the first foothold. The true first foothold is the windows workstation. 
