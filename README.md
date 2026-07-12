@@ -31,7 +31,8 @@ The investigation reconstructs the complete attack chain, identigying the initia
 
 ## 🧭 Scope & Environment
 
-- **Environment:**  
+- **Environment:**
+  -  Northpeak Logistics enterprise environment (Windows workstations and servers, Linux host, Microsoft Sentinel & Microsoft Defender for Endpoint)
 - **Data Sources:**  
 - **Timeframe:** <YYYY-MM-DD → YYYY-MM-DD>  
 
