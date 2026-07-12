@@ -122,9 +122,129 @@ _All flags below are collapsible for readability._
 ---
 
 <details>
-<summary id="-flag-1">🚩 <strong>Flag 1: <Technique Name></strong></summary>
+<summary id="-flag-1">🚩 <strong>Flag 1: The Real Foothold <Technique Name></strong></summary>
 
 ### 🎯 Objective
+The attacker was attempting to establish an initial access point into the Windows environment using valid credentials and an interactive logon session, allowing them to operate within the estate without exploiting a vulnerability.
+
+### 📌 Finding
+The attacker successfully authenticated to a Windows host from an external source using legitimate credentials. The activity did not indicate exploitation; instead, the attacker used a valid-account intrusion to gain interactive access and begin post-compromise activity.
+
+### 🔍 Evidence
+
+| Field | Value |
+|------|-------|
+| Host | npt-ws01 |
+| Timestamp | 2026-06-16T20:58:02.3673704Z  |
+| Process | RDP / RemoteInteractive |
+
+### ⚠️ Impact, Risk, and Relevance
+
+The attacker obtained an initial foothold into the Windows environment by authenticating through Remote Desktop Protocol (RDP) using valid credentials. This allowed the attacker to establish an interactive session on the Windows system without exploiting a vulnerability, making the activity appear similar to legitimate administrative access.
+
+The primary risk is that compromised credentials combined with RDP access provide an attacker with direct control of an internal endpoint. From this foothold, the attacker could perform reconnaissance, execute commands, move laterally across the network, escalate privileges, establish persistence, and access sensitive data.
+
+This finding is significant because the intrusion relied on legitimate authentication mechanisms rather than malware or exploitation. Monitoring abnormal RDP authentication attempts, external RDP exposure, unusual source IP addresses, and privileged account usage is critical for detecting similar valid-account attacks.
+
+### 🔧 KQL Query Used
+DeviceLogonEvents
+| where DeviceName has_any ("npt-ws01","npt-srv01","npt-linux01")
+| where Timestamp between (datetime(2026-06-16 20:00:00) .. datetime(2026-06-17 00:30:00))
+| where isnotempty( RemoteIP) 
+| where LogonType contains "remote" or LogonType contains "interactive"
+| project DeviceName, AccountName, TimeGenerated, LogonType, ActionType, Protocol
+| order by TimeGenerated asc 
+
+
+### 🖼️ Screenshot
+<img width="1262" height="277" alt="image" src="https://github.com/user-attachments/assets/248d5efe-217c-40d8-bbb4-bf87a31007f2" />
+
+Answer: npt-ws01, 148.64.103.173
+---
+
+<details>
+<summary id="-flag-1">🚩 <strong>Flag 2: First Foothold, Ordering <Technique Name></strong></summary>
+
+### 🎯 Objective
+While investigating it may seem, due to the noise, that the Linux workstation was the first foothold. The true first foothold is the windows workstation. 
+
+### 📌 Finding
+During the investigation, the Linux workstation initially appeared to be the first foothold due to the amount of attacker activity observed on the system. Timeline analysis disproved this assumption. The Linux workstation's first successful logon occurred at 2026-06-16T22:01:38.373679Z, while the Windows workstation had already been accessed at 2026-06-16T20:58:02.3673704Z through authenticated RDP. This confirms that the Windows workstation was the attacker's true initial foothold. 
+
+### 🔍 Evidence
+
+| Field               | Value                        |
+| ------------------- | ---------------------------- |
+| Initial Foothold    | npt-ws01                     |
+| Initial Access Time | 2026-06-16T20:58:02.3673704Z |
+| Access Method       | RDP/RemoteInteractive        |
+| Later Accessed Host | npt-linux01                  |
+| Linux Access Time   | 2026-06-16T22:01:38.373679Z  |
+| Access Method       | RDP/Network                  |
+
+
+### 💡 Why it matters
+Identifying the true initial foothold is critical for accurately reconstructing the attack timeline. Although the Linux workstation appeared suspicious due to the volume of attacker activity and post-compromise actions, timeline analysis confirmed that it was accessed after the Windows workstation.
+
+The attacker first gained access to the Windows environment through authenticated RDP access at 2026-06-16T20:58:02.3673704Z. The Linux workstation was accessed later at 2026-06-16T22:01:38.373679Z, indicating it was not the initial entry point.
+
+This finding demonstrates the importance of validating attack assumptions through authentication timelines rather than relying on the most visibly active system. Misidentifying the first compromised host could lead to incorrect containment actions, missed indicators of compromise, and an incomplete understanding of attacker movement throughout the environment.
+
+### 🔧 KQL Query Used
+DeviceLogonEvents
+| where DeviceName has_any ("npt-linux01")
+| where Timestamp between (datetime(2026-06-16 20:00:00) .. datetime(2026-06-17 00:30:00))
+| where ActionType == "LogonSuccess"
+| where isnotempty( RemoteIP)
+| project DeviceName, TimeGenerated, ActionType, LogonType, RemoteIP
+| order by TimeGenerated asc 
+
+### 🖼️ Screenshot
+<img width="1162" height="325" alt="image" src="https://github.com/user-attachments/assets/db4c8bf8-dfdc-49a6-8ed7-e256b0f62709" />
+
+Answer: npt-ws01, 148.64.103.173
+---
+<details>
+<summary id="-flag-1">🚩 <strong>Flag 2: The Real Foothold <Technique Name></strong></summary>
+
+### 🎯 Objective
+The attacker gained a foothold into the Windows System. 
+<What the attacker was trying to accomplish>
+
+### 📌 Finding
+<High-level description of the activity>
+
+### 🔍 Evidence
+
+| Field | Value |
+|------|-------|
+| Host | <Placeholder> |
+| Timestamp | <Placeholder> |
+| Process | <Placeholder> |
+| Parent Process | <Placeholder> |
+| Command Line | <Placeholder> |
+
+### 💡 Why it matters
+<Explain impact, risk, and relevance>
+
+### 🔧 KQL Query Used
+<Add KQL here>
+
+### 🖼️ Screenshot
+<Insert screenshot>
+
+### 🛠️ Detection Recommendation
+
+**Hunting Tip:**  
+<Actionable guidance for defenders>
+
+</details>
+---
+<details>
+<summary id="-flag-1">🚩 <strong>Flag 2: The Real Foothold <Technique Name></strong></summary>
+
+### 🎯 Objective
+The attacker gained a foothold into the Windows System. 
 <What the attacker was trying to accomplish>
 
 ### 📌 Finding
@@ -157,10 +277,20 @@ _All flags below are collapsible for readability._
 </details>
 
 ---
-
-<!-- Duplicate Flag 1 section for Flags 2–20 -->
-
----
+## Timeline
+| Time (UTC)                   | Phase                  | Event                                                                                                                                                                                                                                                                             |
+| ---------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **2026-06-16 20:57:21**      | Initial Access         | Attacker successfully authenticated to **npt-ws01** from external IP **148.64.103.173** via **RDP** using valid credentials. The remote client hostname was identified as **LORANSE**.                                                                                            |
+| **2026-06-16 21:57:36**      | Initial Access         | A second successful **RDP** session was established to **npt-srv01** from the same external IP, confirming multiple externally accessible systems.                                                                                                                                |
+| **2026-06-16 22:16:52**      | Linux Reconnaissance   | On **npt-linux01**, the attacker enumerated privileges using **`sudo -l`** to determine potential privilege escalation paths.                                                                                                                                                     |
+| **2026-06-16 22:21**         | Internal Discovery     | The attacker verified Windows host reachability from Linux using **`/dev/tcp`** against **TCP/3389**, confirming RDP accessibility before pivoting.                                                                                                                               |
+| **2026-06-16 22:31**         | Tooling                | The attacker installed **pipx** and **NetExec** to facilitate lateral movement and authenticated operations within the environment.                                                                                                                                               |
+| **2026-06-16 22:32**         | Lateral Movement       | Using **NetExec** over **SMB (TCP/445)**, the attacker authenticated as **sancadmin** from **10.2.0.30** to **npt-ws01**, pivoting from Linux into the Windows environment.                                                                                                       |
+| **2026-06-16 22:43**         | Privilege Verification | The attacker executed **`whoami.exe /groups`** to verify membership in privileged security groups before continuing operations.                                                                                                                                                   |
+| **2026-06-16 23:04:16**      | Persistence            | Persistence was established by creating a **Windows Run Registry** key that launched **NorthpeakSyncTray.ps1** with hidden PowerShell execution whenever the user logged in.                                                                                                      |
+| **2026-06-16 23:19:22**      | Command & Control      | The attacker deployed an encoded **PowerShell Invoke-WebRequest** beacon communicating with **cdn.sync-northpeak.com**. Beacon intervals showed a regular cadence consistent with an automated callback mechanism.                                                                |
+| **2026-06-16 23:44:08**      | Data Exfiltration      | Sensitive file **customer_data_export_20260616.csv** was exfiltrated from **npt-srv01** to **cdn.sync-northpeak.com** during the attacker's second remote session using **Invoke-WebRequest**.                                                                                    |
+| **Post-Incident Assessment** | Findings               | The investigation concluded the attacker relied on **valid credentials, built-in Windows utilities, and living-off-the-land techniques**, avoiding malware deployment or security-control tampering while maintaining persistent access and successfully stealing customer data.  |
 
 ## 🚨 Detection Gaps & Recommendations
 
