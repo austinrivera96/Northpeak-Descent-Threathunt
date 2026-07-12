@@ -34,17 +34,17 @@ The investigation reconstructs the complete attack chain, identigying the initia
 - **Environment:**
   -  Northpeak Logistics enterprise environment (Windows workstations and servers, Linux host, Microsoft Sentinel & Microsoft Defender for Endpoint)
   -  Scope: Northpeak Hosts
-    -npt-ws01
-    -npt-srv01
-    -npt-linux01  
+    -`npt-ws01`
+    -`npt-srv01`
+    -`npt-linux01`  
 - **Data Sources:**
   -  Microsoft Defender XDR
-    - DeviceProcessEvents
-    - DeviceLogonEvents
-    - DeviceNetworkEvents
-    - DeviceRegistryEvents
-    - DeviceFileEvents
-    - DeviceEvents
+    - `DeviceProcessEvents`
+    - `DeviceLogonEvents`
+    - `DeviceNetworkEvents`
+    - `DeviceRegistryEvents`
+    - `DeviceFileEvents`
+    - `DeviceEvents`
    - Microsoft Sentinel Log Analytics
 - **Timeframe:**
   - 2026-06-16 → 2026-06-17 (20:00 UTC on June 16 through 00:30 UTC on June 17)
@@ -125,7 +125,7 @@ _All flags below are collapsible for readability._
 <summary id="-flag-1">🚩 <strong>Flag 1: The Real Foothold <Technique Name></strong></summary>
 
 ### 🎯 Objective
-The attacker was attempting to establish an initial access point into the Windows environment using valid credentials and an interactive logon session, allowing them to operate within the estate without exploiting a vulnerability.
+`HUNT LEAD: "They didn't exploit anything to get in. One external address got onto the Windows estate cleanly and worked it interactively. Give me that source and how they came through."`
 
 ### 📌 Finding
 The attacker successfully authenticated to a Windows host from an external source using legitimate credentials. The activity did not indicate exploitation; instead, the attacker used a valid-account intrusion to gain interactive access and begin post-compromise activity.
@@ -134,7 +134,7 @@ The attacker successfully authenticated to a Windows host from an external sourc
 
 | Field | Value |
 |------|-------|
-| Host | npt-ws01 |
+| Host | `npt-ws01` |
 | Timestamp | 2026-06-16T20:58:02.3673704Z  |
 | Process | RDP / RemoteInteractive |
 
@@ -161,7 +161,7 @@ DeviceLogonEvents
 <img width="1262" height="277" alt="image" src="https://github.com/user-attachments/assets/248d5efe-217c-40d8-bbb4-bf87a31007f2" />
 
 **Answer:** 
-npt-ws01, 148.64.103.173
+`npt-ws01`, `148.64.103.173`
 
 </details>
 
@@ -171,19 +171,19 @@ npt-ws01, 148.64.103.173
 <summary id="-flag-2">🚩 <strong>Flag 2: First Foothold, Ordering <Technique Name></strong> </summary>
 
 ### 🎯 Objective
-While investigating it may seem, due to the noise, that the Linux workstation was the first foothold. The true first foothold is the windows workstation. 
+`HUNT LEAD: "There's more than one foothold here, and the obvious story has the Linux box first. Don't take that on trust. Prove which one actually came first, and name it."` 
 
 ### 📌 Finding
-During the investigation, the Linux workstation initially appeared to be the first foothold due to the amount of attacker activity observed on the system. Timeline analysis disproved this assumption. The Linux workstation's first successful logon occurred at 2026-06-16T22:01:38.373679Z, while the Windows workstation had already been accessed at 2026-06-16T20:58:02.3673704Z through authenticated RDP. This confirms that the Windows workstation was the attacker's true initial foothold. 
+During the investigation, the Linux workstation initially appeared to be the first foothold due to the amount of attacker activity observed on the system. Timeline analysis disproved this assumption. The Linux workstation's first successful logon occurred at `2026-06-16T22:01:38.373679Z`, while the Windows workstation had already been accessed at `2026-06-16T20:58:02.3673704Z` through authenticated RDP. This confirms that the Windows workstation was the attacker's true initial foothold. 
 
 ### 🔍 Evidence
 
 | Field               | Value                        |
 | ------------------- | ---------------------------- |
-| Initial Foothold    | npt-ws01                     |
+| Initial Foothold    | `npt-ws01`                    |
 | Initial Access Time | 2026-06-16T20:58:02.3673704Z |
 | Access Method       | RDP/RemoteInteractive        |
-| Later Accessed Host | npt-linux01                  |
+| Later Accessed Host | `npt-linux01`                  |
 | Linux Access Time   | 2026-06-16T22:01:38.373679Z  |
 | Access Method       | RDP/Network                  |
 
@@ -191,11 +191,12 @@ During the investigation, the Linux workstation initially appeared to be the fir
 ### 💡 Why it matters
 Identifying the true initial foothold is critical for accurately reconstructing the attack timeline. Although the Linux workstation appeared suspicious due to the volume of attacker activity and post-compromise actions, timeline analysis confirmed that it was accessed after the Windows workstation.
 
-The attacker first gained access to the Windows environment through authenticated RDP access at 2026-06-16T20:58:02.3673704Z. The Linux workstation was accessed later at 2026-06-16T22:01:38.373679Z, indicating it was not the initial entry point.
+The attacker first gained access to the Windows environment through authenticated RDP access at `2026-06-16T20:58:02.3673704Z`. The Linux workstation was accessed later at `2026-06-16T22:01:38.373679Z`, indicating it was not the initial entry point.
 
 This finding demonstrates the importance of validating attack assumptions through authentication timelines rather than relying on the most visibly active system. Misidentifying the first compromised host could lead to incorrect containment actions, missed indicators of compromise, and an incomplete understanding of attacker movement throughout the environment.
 
 ### 🔧 KQL Query Used
+```kql
 DeviceLogonEvents
 | where DeviceName has_any ("npt-linux01")
 | where Timestamp between (datetime(2026-06-16 20:00:00) .. datetime(2026-06-17 00:30:00))
@@ -203,22 +204,23 @@ DeviceLogonEvents
 | where isnotempty( RemoteIP)
 | project DeviceName, TimeGenerated, ActionType, LogonType, RemoteIP
 | order by TimeGenerated asc 
+```
 
 ### 🖼️ Screenshot
 <img width="1162" height="325" alt="image" src="https://github.com/user-attachments/assets/db4c8bf8-dfdc-49a6-8ed7-e256b0f62709" />
 
 **Answer:** 
-npt-ws01, 148.64.103.173
+`npt-ws01`, `148.64.103.173`
 
 </details>
 
 ---
 
 <details>
-<summary id="-flag-3">🚩 <strong>Flag 3: The Real Foothold <Technique Name></strong></summary>
+<summary id="-flag-3">🚩 <strong>Flag 3: Operator Workstation Name <Technique Name></strong></summary>
 
 ### 🎯 Objective
-The attacker gained a foothold into the Windows System. 
+`HUNT LEAD: "They were sloppy. Something they connected with announced itself on every remote session into the estate. Name it."`
 <What the attacker was trying to accomplish>
 
 ### 📌 Finding
@@ -238,14 +240,23 @@ The attacker gained a foothold into the Windows System.
 <Explain impact, risk, and relevance>
 
 ### 🔧 KQL Query Used
-<Add KQL here>
+```kql
+DeviceProcessEvents
+| where DeviceName has_any ("npt-ws01","npt-srv01","npt-linux01")
+| where Timestamp between (datetime(2026-06-16 20:00:00) .. datetime(2026-06-17 00:30:00))
+| where IsProcessRemoteSession == true
+| project DeviceName, TimeGenerated, ProcessRemoteSessionDeviceName
+| order by TimeGenerated asc 
+```
+
 
 ### 🖼️ Screenshot
-<Insert screenshot>
+<img width="975" height="239" alt="image" src="https://github.com/user-attachments/assets/80ac474e-c7e4-42f8-835b-dad20ecb3760" />
+
 
 ### 🛠️ Detection Recommendation
 
-**Hunting Tip:**  
+**Answer: Loranse**  
 <Actionable guidance for defenders>
 
 </details>
@@ -256,7 +267,8 @@ The attacker gained a foothold into the Windows System.
 <summary id="-flag-4">🚩 <strong>Flag 4: The Real Foothold <Technique Name></strong></summary>
 
 ### 🎯 Objective
-The attacker gained a foothold into the Windows System. 
+`HUNT LEAD: "The server took its own way in, it wasn't reached from inside. Reconstruct it: the method, the source, the session type."`
+ 
 <What the attacker was trying to accomplish>
 
 ### 📌 Finding
@@ -276,18 +288,70 @@ The attacker gained a foothold into the Windows System.
 <Explain impact, risk, and relevance>
 
 ### 🔧 KQL Query Used
-<Add KQL here>
-
+```kql
+DeviceLogonEvents
+| where DeviceName has_any ("npt-srv01")
+| where Timestamp between (datetime(2026-06-16 20:00:00) .. datetime(2026-06-17 00:30:00))
+| where ActionType == "LogonSuccess"
+| where isnotempty( RemoteIP)
+| project TimeGenerated, AccountName, DeviceName, RemoteIP, ActionType, LogonType
+| order by TimeGenerated asc 
+```
 ### 🖼️ Screenshot
-<Insert screenshot>
+<img width="975" height="291" alt="image" src="https://github.com/user-attachments/assets/d9e6b6f7-a591-4cd4-afa5-198a424c9579" />
+
 
 ### 🛠️ Detection Recommendation
 
-**Answer:**  
+**Answer :** RDP, 148.64.103.173, RemoteInteractive  
 <Actionable guidance for defenders>
 
 </details>
+---
 
+<details>
+<summary id="-flag-4">🚩 <strong>Flag 4: The Real Foothold <Technique Name></strong></summary>
+
+### 🎯 Objective
+`HUNT LEAD: "The server took its own way in, it wasn't reached from inside. Reconstruct it: the method, the source, the session type."`
+ 
+<What the attacker was trying to accomplish>
+
+### 📌 Finding
+<High-level description of the activity>
+
+### 🔍 Evidence
+
+| Field | Value |
+|------|-------|
+| Host | <Placeholder> |
+| Timestamp | <Placeholder> |
+| Process | <Placeholder> |
+| Parent Process | <Placeholder> |
+| Command Line | <Placeholder> |
+
+### 💡 Why it matters
+<Explain impact, risk, and relevance>
+
+### 🔧 KQL Query Used
+```kql
+DeviceLogonEvents
+| where DeviceName has_any ("npt-srv01")
+| where Timestamp between (datetime(2026-06-16 20:00:00) .. datetime(2026-06-17 00:30:00))
+| where ActionType == "LogonSuccess"
+| where isnotempty( RemoteIP)
+| project TimeGenerated, AccountName, DeviceName, RemoteIP, ActionType, LogonType
+| order by TimeGenerated asc 
+```
+### 🖼️ Screenshot
+<img width="975" height="291" alt="image" src="https://github.com/user-attachments/assets/d9e6b6f7-a591-4cd4-afa5-198a424c9579" />
+
+
+### 🛠️ Detection Recommendation
+
+**Answer :** RDP, 148.64.103.173, RemoteInteractive  
+
+<Actionable guidance for defenders>
 ---
 ## Timeline
 | Time (UTC)                   | Phase                  | Event                                                                                                                                                                                                                                                                             |
