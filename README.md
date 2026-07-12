@@ -361,8 +361,12 @@ DeviceProcessEvents
 **Answer :** `sudo -l` 
 
 <Actionable guidance for defenders>
+
+</details>
+  
 ---
 ## Timeline
+
 | Time (UTC)                   | Phase                  | Event                                                                                                                                                                                                                                                                             |
 | ---------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **2026-06-16 20:57:21**      | Initial Access         | Attacker successfully authenticated to **npt-ws01** from external IP **148.64.103.173** via **RDP** using valid credentials. The remote client hostname was identified as **LORANSE**.                                                                                            |
