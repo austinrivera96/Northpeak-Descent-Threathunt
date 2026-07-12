@@ -221,17 +221,19 @@ DeviceLogonEvents
 <What the attacker was trying to accomplish>
 
 ### 📌 Finding
-<High-level description of the activity>
+Remote session telemetry consistently recorded the attacker's originating device name as `Loranse`. Every interactive remote session into the Windows estate exposed the same client device name, allowing the operator's system to be identified despite their use of legitimate credentials.
 
 ### 🔍 Evidence
 
-| Field | Value |
-|------|-------|
-| Host | <Placeholder> |
-| Timestamp | <Placeholder> |
-| Process | <Placeholder> |
-| Parent Process | <Placeholder> |
-| Command Line | <Placeholder> |
+| Field                          | Value                                               |
+| ------------------------------ | --------------------------------------------------- |
+| **Host**                       | `npt-ws01` (also observed on npt-srv01)               |
+| **Timestamp**                  | `2026-06-16T20:58:02.3673704Z` (first observed)       |
+| **Process**                    | Remote interactive session                          |
+| **Parent Process**             | N/A (Remote Session Metadata)                       |
+| **Command Line**               | N/A (Captured via `ProcessRemoteSessionDeviceName`) |
+| **Remote Session Device Name** | **Loranse**                                         |
+
 
 ### 💡 Why it matters
 <Explain impact, risk, and relevance>
@@ -250,9 +252,6 @@ DeviceProcessEvents
 ### 🖼️ Screenshot
 <img width="975" height="239" alt="image" src="https://github.com/user-attachments/assets/80ac474e-c7e4-42f8-835b-dad20ecb3760" />
 
-
-### 🛠️ Detection Recommendation
-
 **Answer: Loranse**  
 <Actionable guidance for defenders>
 
@@ -261,7 +260,7 @@ DeviceProcessEvents
 ---
 
 <details>
-<summary id="-flag-4">🚩 <strong>Flag 4: The Real Foothold <Technique Name></strong></summary>
+<summary id="-flag-4">🚩 <strong>Flag 4: SRV01 Access Vector <Technique Name></strong></summary>
 
 ### 🎯 Objective
 `HUNT LEAD: "The server took its own way in, it wasn't reached from inside. Reconstruct it: the method, the source, the session type."`
@@ -269,7 +268,8 @@ DeviceProcessEvents
 <What the attacker was trying to accomplish>
 
 ### 📌 Finding
-<High-level description of the activity>
+
+We now know that npt-srv01 was accessed with remote IP 148.64.103.173 with LogonType RemoteInteractive. DeviceNetworkEvents. 
 
 ### 🔍 Evidence
 
@@ -294,8 +294,20 @@ DeviceLogonEvents
 | project TimeGenerated, AccountName, DeviceName, RemoteIP, ActionType, LogonType
 | order by TimeGenerated asc 
 ```
+
+```kql
+DeviceNetworkEvents
+| where DeviceName has_any ("npt-srv01")
+| where Timestamp between (datetime(2026-06-16 20:00:00) .. datetime(2026-06-17 00:30:00))
+| where RemoteIP == "148.64.103.173"
+| where isnotempty( RemoteIP)
+| project TimeGenerated, DeviceName, RemoteIP, LocalPort, ActionType
+| order by TimeGenerated asc
+```
 ### 🖼️ Screenshot
-<img width="975" height="291" alt="image" src="https://github.com/user-attachments/assets/d9e6b6f7-a591-4cd4-afa5-198a424c9579" />
+<img width="975" height="291" alt="image" src="https://github.com/user-attachments/assets/8fb5926b-0bcd-4d34-83ee-22b3675b377d" />
+<img width="975" height="193" alt="image" src="https://github.com/user-attachments/assets/339a0f5f-7df1-476e-b1ee-2c77e96daece" />
+
 
 
 ### 🛠️ Detection Recommendation
