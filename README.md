@@ -248,12 +248,10 @@ DeviceProcessEvents
 | order by TimeGenerated asc 
 ```
 
-
 ### 🖼️ Screenshot
 <img width="975" height="239" alt="image" src="https://github.com/user-attachments/assets/80ac474e-c7e4-42f8-835b-dad20ecb3760" />
 
 **Answer:** `Loranse` 
-<Actionable guidance for defenders>
 
 </details>
 
@@ -316,6 +314,7 @@ DeviceNetworkEvents
 <Actionable guidance for defenders>
 
 </details>
+
 ---
 
 <details>
@@ -358,13 +357,15 @@ DeviceProcessEvents
 
 ### 🛠️ Detection Recommendation
 
-**Answer :** `sudo -l` 
+**Answer :** 
+`sudo -l` 
 
 <Actionable guidance for defenders>
 
 </details>
   
 ---
+
 ## Timeline
 
 | Time (UTC)                   | Phase                  | Event                                                                                                                                                                                                                                                                             |
