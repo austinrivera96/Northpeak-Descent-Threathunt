@@ -252,7 +252,7 @@ DeviceProcessEvents
 ### 🖼️ Screenshot
 <img width="975" height="239" alt="image" src="https://github.com/user-attachments/assets/80ac474e-c7e4-42f8-835b-dad20ecb3760" />
 
-**Answer: Loranse**  
+**Answer:** `Loranse` 
 <Actionable guidance for defenders>
 
 </details>
@@ -268,21 +268,21 @@ DeviceProcessEvents
 <What the attacker was trying to accomplish>
 
 ### 📌 Finding
-
-We now know that npt-srv01 was accessed with remote IP 148.64.103.173 with LogonType RemoteInteractive. DeviceNetworkEvents. 
+npt-srv01 was accessed with remote IP 148.64.103.173 with LogonType RemoteInteractive. Utilizing DeviceNetworkEvents we can see that the remote port used was port 3389 (RDP). 
 
 ### 🔍 Evidence
 
-| Field | Value |
-|------|-------|
-| Host | <Placeholder> |
-| Timestamp | <Placeholder> |
-| Process | <Placeholder> |
-| Parent Process | <Placeholder> |
-| Command Line | <Placeholder> |
+| Field              | Value                                                                |
+| ------------------ | -------------------------------------------------------------------- |
+| **Host**           | npt-srv01                                                            |
+| **Timestamp**      | 2026-06-16T20:48:41.8686404Z *(first observed RDP network activity)* |
+| **Process**        | Remote Desktop Session (LogonSuccess)                                |
+| **Parent Process** | N/A (Interactive Logon Event)                                        |
+| **Command Line**   | N/A (Authentication event captured through `DeviceLogonEvents`)      |
+
 
 ### 💡 Why it matters
-<Explain impact, risk, and relevance>
+This finding demonstrates that the attacker established a direct remote desktop session to npt-srv01 from an external IP address instead of laterally moving from another compromised internal system. Direct exposure of RDP services to the Internet significantly increases the risk of unauthorized access, particularly when attackers possess valid credentials. Correlating successful logon events with network telemetry confirms both the access method and source, providing high-confidence evidence of the initial server compromise and supporting accurate attack path reconstruction
 
 ### 🔧 KQL Query Used
 ```kql
@@ -312,53 +312,53 @@ DeviceNetworkEvents
 
 ### 🛠️ Detection Recommendation
 
-**Answer :** RDP, 148.64.103.173, RemoteInteractive  
+**Answer :** `RDP, 148.64.103.173, RemoteInteractive`  
 <Actionable guidance for defenders>
 
 </details>
 ---
 
 <details>
-<summary id="-flag-4">🚩 <strong>Flag 4: The Real Foothold <Technique Name></strong></summary>
+<summary id="-flag-5">🚩 <strong>Flag 5: Sudo Enumeration <Technique Name></strong></summary>
 
 ### 🎯 Objective
-`HUNT LEAD: "The server took its own way in, it wasn't reached from inside. Reconstruct it: the method, the source, the session type."`
+`HUNT LEAD: "First thing on the Linux box, they checked what they could escalate with. Give me the exact command. They fumbled it once before they got it right, that's how you'll spot the real one."`
  
 <What the attacker was trying to accomplish>
 
 ### 📌 Finding
-<High-level description of the activity>
+The attacker launched a Bash shell and executed the sudo -l command at 2026-06-16T22:16:52.687226Z to enumerate the current user's sudo permissions. Prior to the successful execution, they mistyped the command during an attempt at 2026-06-16T22:11:28.916766Z, providing a clear indicator of hands-on-keyboard activity rather than an automated process.
 
 ### 🔍 Evidence
 
-| Field | Value |
-|------|-------|
-| Host | <Placeholder> |
-| Timestamp | <Placeholder> |
-| Process | <Placeholder> |
-| Parent Process | <Placeholder> |
-| Command Line | <Placeholder> |
+| Field              | Value                       |
+| ------------------ | --------------------------- |
+| **Host**           | npt-linux01                 |
+| **Timestamp**      | 2026-06-16T22:16:52.687226Z |
+| **Process**        | bash                        |
+| **Parent Process** | sshd                        |
+| **Command Line**   | `sudo -l`                   |
+
 
 ### 💡 Why it matters
-<Explain impact, risk, and relevance>
+The `sudo -l` command is a common post-compromise reconnaissance technique used to determine which commands a user can execute with elevated privileges. By identifying misconfigured or passwordless sudo permissions, an attacker can quickly assess potential privilege escalation paths to root. The preceding failed attempt also indicates an interactive operator manually typing commands, helping distinguish human activity from automated malware or scripts. Detecting early privilege enumeration is valuable because it often precedes privilege escalation and broader compromise of Linux systems.
 
 ### 🔧 KQL Query Used
 ```kql
-DeviceLogonEvents
-| where DeviceName has_any ("npt-srv01")
+DeviceProcessEvents
+| where DeviceName has_any ("npt-linux01")
 | where Timestamp between (datetime(2026-06-16 20:00:00) .. datetime(2026-06-17 00:30:00))
-| where ActionType == "LogonSuccess"
-| where isnotempty( RemoteIP)
-| project TimeGenerated, AccountName, DeviceName, RemoteIP, ActionType, LogonType
-| order by TimeGenerated asc 
+| where ProcessCommandLine contains "sudo"
+| project Timestamp, DeviceName, ProcessCommandLine
 ```
 ### 🖼️ Screenshot
-<img width="975" height="291" alt="image" src="https://github.com/user-attachments/assets/d9e6b6f7-a591-4cd4-afa5-198a424c9579" />
+
+<img width="975" height="480" alt="image" src="https://github.com/user-attachments/assets/53ac7634-81a4-4000-8294-3e47549fba61" />
 
 
 ### 🛠️ Detection Recommendation
 
-**Answer :** RDP, 148.64.103.173, RemoteInteractive  
+**Answer :** `sudo -l` 
 
 <Actionable guidance for defenders>
 ---
