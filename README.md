@@ -1093,8 +1093,6 @@ The following timeline reconstructs the attacker activity observed across NorthP
 
 ## 🧾 Final Assessment
 
-## 🧾 Final Assessment
-
 The NorthPeak Logistics threat hunt identified a complete intrusion lifecycle involving valid-account abuse, remote access, lateral movement, persistence, command-and-control activity, and data exfiltration. The attacker did not rely on malware deployment, vulnerability exploitation, or disabling security controls. Instead, they leveraged legitimate credentials, trusted administrative protocols, and built-in operating system utilities to remain operational while blending into normal activity.
 
 The attacker initially gained access to `npt-ws01` through external RDP access using compromised credentials from `148.64.103.173`. After establishing a foothold, they expanded access through `npt-linux01`, performed privilege and environment discovery, installed offensive tooling (`NetExec`), and used SMB-based lateral movement to access additional Windows systems. The attacker then established persistence through a Windows Run registry key that executed a hidden PowerShell script after user logon.
