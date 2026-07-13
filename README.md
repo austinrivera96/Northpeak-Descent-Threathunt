@@ -81,7 +81,35 @@ The investigation reconstructs the complete attack chain, identigying the initia
 
 ## 🧠 Hunt Overview
 
-<High-level narrative describing the attack lifecycle, key behaviors observed, and why this hunt matters.>
+## 🧠 Hunt Overview
+
+The NorthPeak Descent threat hunt reconstructed a full attack lifecycle involving a valid-account intrusion, internal reconnaissance, lateral movement, persistence, command-and-control activity, and data exfiltration across the NorthPeak Logistics environment.
+
+The attacker initially gained access to the environment through an external Remote Desktop Protocol (RDP) connection to `npt-ws01` using legitimate credentials from the source IP `148.64.103.173`. Although early investigation suggested the Linux host was the initial compromise due to the volume of activity observed, timeline analysis confirmed that `npt-ws01` was the true initial foothold. The attacker later accessed `npt-linux01`, demonstrating that the intrusion involved multiple compromised systems.
+
+After establishing access, the attacker performed reconnaissance to understand available privileges and network reachability. On the Linux host, they used native Bash functionality (`/dev/tcp`) to test connectivity to Windows systems over RDP and executed `sudo -l` to enumerate privilege escalation opportunities. The attacker then installed operator tooling, including `NetExec`, to facilitate internal movement using the compromised `sancadmin` account.
+
+The attacker pivoted from `npt-linux01` to `npt-ws01` using SMB-based lateral movement and continued hands-on-keyboard activity through PowerShell and built-in Windows utilities. Rather than disabling security controls, the attacker relied on legitimate credentials and living-off-the-land techniques to blend into normal administrative activity. They established persistence through a Windows Registry Run Key that automatically launched a malicious PowerShell script after user logon.
+
+Following persistence, the attacker deployed an automated command-and-control channel using multiple look-alike domains under `sync-northpeak.com`. Beacon activity was identified through cross-source correlation between `DeviceNetworkEvents` and `DeviceProcessEvents`, revealing hidden C2 infrastructure that was not visible through network telemetry alone. Encoded PowerShell commands were also analyzed to separate legitimate system-generated activity from attacker-controlled execution.
+
+The final stage of the intrusion involved collection and exfiltration of sensitive customer data. The attacker exported `customer_data_export_20260616.csv` from `npt-srv01` and transferred the file to the external C2 infrastructure at `cdn.sync-northpeak.com` using PowerShell `Invoke-WebRequest`. Session correlation confirmed the exfiltration occurred during the attacker's second remote interactive session to the server.
+
+This threat hunt demonstrates the importance of behavioral detection and cross-source investigation. The attacker did not rely on exploits, malware deployment, or attempts to disable defenses. Instead, they abused valid credentials, trusted administrative tools, and native system capabilities to maintain access and complete their objectives while avoiding traditional security detections.
+
+Key behaviors identified during the hunt include:
+
+- Valid account abuse for initial access and remote sessions.
+- RDP-based external access and internal lateral movement.
+- Linux-based reconnaissance and attacker tooling deployment.
+- SMB lateral movement using compromised credentials.
+- PowerShell abuse and encoded command execution.
+- Registry-based persistence through Run Keys.
+- Automated C2 beaconing and domain infrastructure.
+- Data staging and exfiltration through HTTPS-based web requests.
+- Living-off-the-land activity without security control tampering.
+
+The investigation highlights the need for organizations to monitor identity-based threats, correlate endpoint and network telemetry, and prioritize abnormal behavior patterns over individual indicators. 
 
 ---
 
@@ -89,26 +117,26 @@ The investigation reconstructs the complete attack chain, identigying the initia
 
 | Flag | Technique Category | MITRE ID | Priority |
 |-----:|-------------------|----------|----------|
-| 1 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 2 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 3 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 4 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 5 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 6 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 7 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 8 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 9 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 10 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 11 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 12 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 13 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 14 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 15 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 16 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 17 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 18 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 19 | <Placeholder> | <Placeholder> | <Placeholder> |
-| 20 | <Placeholder> | <Placeholder> | <Placeholder> |
+| 1 | Valid Accounts - Remote Access (RDP) | T1078 / T1021.001 | Critical |
+| 2 | Initial Access Validation / Compromise Timeline Analysis | T1078 | High |
+| 3 | Remote Session Discovery / External Operator Identification | T1033 | Medium |
+| 4 | Remote Services - Remote Desktop Protocol | T1021.001 | Critical |
+| 5 | Permission Groups Discovery (Linux Privilege Enumeration) | T1069.001 | High |
+| 6 | Network Service Scanning | T1046 | Medium |
+| 7 | Tool Installation / Remote Access Tool Deployment | T1588.002 | High |
+| 8 | Remote Services - SMB/Windows Admin Shares | T1021.002 | Critical |
+| 9 | Command and Scripting Interpreter - PowerShell | T1059.001 | High |
+| 10 | Boot or Logon Autostart Execution: Registry Run Keys | T1547.001 | Critical |
+| 11 | Command and Control - Web Protocols / Domain Infrastructure | T1071.001 | High |
+| 12 | Obfuscated/Compressed Files and Information | T1027 | High |
+| 13 | Command and Scripting Interpreter - PowerShell / Process Discovery Context | T1059.001 | Medium |
+| 14 | Automated C2 Beaconing | T1071.001 / T1102 | High |
+| 15 | Exfiltration Over C2 Channel | T1041 | Critical |
+| 16 | Remote Services Session Correlation / Valid Accounts | T1021.001 / T1078 | High |
+| 17 | Living Off the Land | T1105 / T1059 | High |
+| 18 | Permission Groups Discovery | T1069.001 | Medium |
+| 19 | Data Staged (Collection Preparation) | T1074 | High |
+| 20 | Impact Assessment / Full Attack Chain Reconstruction | N/A | Informational |
 
 ---
 
@@ -946,31 +974,31 @@ DeviceLogonEvents
 `HUNT LEAD: "Here's what should bother you. They were hands-on for hours and nothing tripped. Check whether they tore the defences down to manage that. They didn't. So tell me the model, what let them operate this freely without going near the security stack."`
 
 ### 📌 Finding
-<High-level description of the activity>
+The attacker maintained access and operated within the environment for several hours without disabling security software, modifying defensive configurations, or attempting to evade endpoint protections directly.
+Instead, the attacker relied on a `living-off-the-land approach`, using legitimate credentials and native operating system tools already available within the environment. By blending into normal administrative activity, the attacker avoided detection without needing to tamper with security controls.
 
-### 🔍 Evidence
+The attacker leveraged:
+- Valid user credentials for remote access.
+- Built-in Windows utilities such as PowerShell and native command-line tools.
+- Legitimate administrative functionality to perform reconnaissance, persistence, and exfiltration.
 
-| Field | Value |
-|------|-------|
-| Host | <Placeholder> |
-| Timestamp | <Placeholder> |
-| Process | <Placeholder> |
-| Parent Process | <Placeholder> |
-| Command Line | <Placeholder> |
 
 ### 💡 Why it matters
-<Explain impact, risk, and relevance>
+This activity demonstrates how attackers can maintain persistence and complete objectives without disabling antivirus, endpoint detection, or other security controls.
 
-### 🔧 KQL Query Used
-<Add KQL here>
+Traditional detections often focus on security degradation events, such as stopping services or modifying protections. In this case, the attacker avoided those behaviors entirely and operated through trusted mechanisms.
 
-### 🖼️ Screenshot
-<Insert screenshot>
+Understanding living-off-the-land behavior helps defenders:
+- Detect abuse of legitimate administrative tools.
+- Identify unusual use of valid accounts.
+- Baseline normal PowerShell and remote access activity.
+- Focus on behavioral anomalies instead of only malware signatures.
 
-### 🛠️ Detection Recommendation
+A lack of defensive tampering does not indicate a lack of compromise; attackers can remain effective by abusing trusted tools and credentials.
 
-**Hunting Tip:**  
-<Actionable guidance for defenders>
+
+**Answer:**  
+Attacker operated using legitimate credentials and built-in tools without disabling security controls, living-off-the-land
 
 </details>
 
@@ -983,76 +1011,104 @@ DeviceLogonEvents
 `HUNT LEAD: "When the operator comes back into the workstation for the second time, before they touch anything else they run a short burst to check who they are and what they can do. The last command in that burst isn't a plain identity check, it's testing for one specific thing. Tell me what they were confirming about their own account."`
 
 ### 📌 Finding
-<High-level description of the activity>
+During the attacker's second interactive session on `npt-ws01`, they executed a series of identity and privilege discovery commands before continuing with additional activity. The final command in the discovery burst was:
+`whoami.exe /groups`
+This command was used to enumerate the security groups associated with the current user account and determine what privileges or elevated group memberships were available to the attacker.
+The attacker was specifically confirming whether their compromised account had access to privileged groups that could enable further movement or administrative actions within the environment.
+
 
 ### 🔍 Evidence
 
 | Field | Value |
 |------|-------|
-| Host | <Placeholder> |
-| Timestamp | <Placeholder> |
-| Process | <Placeholder> |
-| Parent Process | <Placeholder> |
-| Command Line | <Placeholder> |
+| Host | npt-ws01 |
+| Timestamp | 2026-06-16T22:43:04.0747217Z |
+| Process | whoami.exe |
+| Parent Process | powershell.exe |
+| Command Line | `whoami.exe /groups |
 
 ### 💡 Why it matters
-<Explain impact, risk, and relevance>
+Privilege discovery is a common post-compromise activity where attackers determine the level of access they currently possess before deciding their next actions.
+
+By checking group memberships, attackers can identify whether an account belongs to privileged groups such as:
+- Local Administrators
+- Domain Admins
+- Remote Desktop Users
+- Other security-enabled groups
+
+This information helps attackers decide whether they can:
+- Escalate privileges.
+- Move laterally to additional systems.
+- Access sensitive resources.
+- Perform administrative actions without additional exploitation.
+
+Detecting commands such as `whoami /groups` in unusual contexts, especially after remote logons or suspicious PowerShell activity, can provide valuable indicators of hands-on-keyboard attacker behavior.
 
 ### 🔧 KQL Query Used
-<Add KQL here>
+```kql
+DeviceProcessEvents
+| where DeviceName has_any ("npt-ws01", "npt-srv01", "npt-linux01")
+| where TimeGenerated between (
+    datetime(2026-06-16 20:00:00) ..
+    datetime(2026-06-17 00:30:00)
+)
+| where ProcessCommandLine contains "whoami"
+| project Timestamp, DeviceName, ProcessCommandLine, InitiatingProcessCommandLine 
+| order by Timestamp asc
+```
 
 ### 🖼️ Screenshot
-<Insert screenshot>
+<img width="975" height="288" alt="image" src="https://github.com/user-attachments/assets/b9cbef88-f2b8-450f-aebd-390fcb058819" />
+
 
 ### 🛠️ Detection Recommendation
 
-**Hunting Tip:**  
-<Actionable guidance for defenders>
+**Asnwer:**  
+whoami.exe /groups, privileged group memberships
 
 </details>
 
 ---
 
-## Timeline
+## 🕒 Attack Timeline
 
-| Time (UTC)                   | Phase                  | Event                                                                                                                                                                                                                                                                             |
-| ---------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **2026-06-16 20:57:21**      | Initial Access         | Attacker successfully authenticated to **npt-ws01** from external IP **148.64.103.173** via **RDP** using valid credentials. The remote client hostname was identified as **LORANSE**.                                                                                            |
-| **2026-06-16 21:57:36**      | Initial Access         | A second successful **RDP** session was established to **npt-srv01** from the same external IP, confirming multiple externally accessible systems.                                                                                                                                |
-| **2026-06-16 22:16:52**      | Linux Reconnaissance   | On **npt-linux01**, the attacker enumerated privileges using **`sudo -l`** to determine potential privilege escalation paths.                                                                                                                                                     |
-| **2026-06-16 22:21**         | Internal Discovery     | The attacker verified Windows host reachability from Linux using **`/dev/tcp`** against **TCP/3389**, confirming RDP accessibility before pivoting.                                                                                                                               |
-| **2026-06-16 22:31**         | Tooling                | The attacker installed **pipx** and **NetExec** to facilitate lateral movement and authenticated operations within the environment.                                                                                                                                               |
-| **2026-06-16 22:32**         | Lateral Movement       | Using **NetExec** over **SMB (TCP/445)**, the attacker authenticated as **sancadmin** from **10.2.0.30** to **npt-ws01**, pivoting from Linux into the Windows environment.                                                                                                       |
-| **2026-06-16 22:43**         | Privilege Verification | The attacker executed **`whoami.exe /groups`** to verify membership in privileged security groups before continuing operations.                                                                                                                                                   |
-| **2026-06-16 23:04:16**      | Persistence            | Persistence was established by creating a **Windows Run Registry** key that launched **NorthpeakSyncTray.ps1** with hidden PowerShell execution whenever the user logged in.                                                                                                      |
-| **2026-06-16 23:19:22**      | Command & Control      | The attacker deployed an encoded **PowerShell Invoke-WebRequest** beacon communicating with **cdn.sync-northpeak.com**. Beacon intervals showed a regular cadence consistent with an automated callback mechanism.                                                                |
-| **2026-06-16 23:44:08**      | Data Exfiltration      | Sensitive file **customer_data_export_20260616.csv** was exfiltrated from **npt-srv01** to **cdn.sync-northpeak.com** during the attacker's second remote session using **Invoke-WebRequest**.                                                                                    |
-| **Post-Incident Assessment** | Findings               | The investigation concluded the attacker relied on **valid credentials, built-in Windows utilities, and living-off-the-land techniques**, avoiding malware deployment or security-control tampering while maintaining persistent access and successfully stealing customer data.  |
+The following timeline reconstructs the attacker activity observed across NorthPeak Logistics systems. Events are ordered chronologically to show the complete intrusion lifecycle from initial access through data exfiltration.
 
-## 🚨 Detection Gaps & Recommendations
-
-### Observed Gaps
-- <Placeholder>
-- <Placeholder>
-- <Placeholder>
-
-### Recommendations
-- <Placeholder>
-- <Placeholder>
-- <Placeholder>
+| Timestamp (UTC) | Host | Event | Technique / Impact |
+|-----------------|------|-------|--------------------|
+| **2026-06-16 20:58:02** | `npt-ws01` | Attacker successfully authenticated from external IP `148.64.103.173` using Remote Desktop Protocol (RDP). | **Initial Access - Valid Accounts (T1078)**. True initial foothold established. |
+| **2026-06-16 21:58:08** | `npt-srv01` | First RemoteInteractive session established to the server. | **Remote Services: RDP (T1021.001)**. Attacker gained interactive access to server infrastructure. |
+| **2026-06-16 22:01:38** | `npt-linux01` | First successful attacker logon to Linux host. | Linux host accessed after Windows foothold; disproved assumption that Linux was the initial entry point. |
+| **2026-06-16 22:02:16** | `npt-linux01` | Attacker tested Windows host reachability using Bash `/dev/tcp` functionality against TCP port `3389`. | **Network Service Scanning (T1046)**. Reconnaissance performed before pivoting. |
+| **2026-06-16 22:16:52** | `npt-linux01` | Attacker executed `sudo -l` after a failed command attempt to enumerate available privilege escalation paths. | **Permission Groups Discovery / Privilege Discovery (T1069)**. Hands-on-keyboard reconnaissance confirmed. |
+| **2026-06-16 22:25:17** | `npt-linux01` | Attacker checked available RDP-related tooling using `which` commands. | Preparation for lateral movement. |
+| **2026-06-16 22:29:11** | `npt-linux01` | Installed `pipx` using `sudo apt-get install -y pipx`. | Tool installation to support attacker operations. |
+| **2026-06-16 22:29:16** | `npt-linux01` | Installed `NetExec` using `pipx install netexec`. | **Remote Access Tools / Lateral Movement Preparation**. |
+| **2026-06-16 22:32:18** | `npt-linux01 → npt-ws01` | Attacker used `NetExec` with the `sancadmin` account to authenticate over SMB from internal source `10.2.0.30` to `npt-ws01`. | **Lateral Movement - SMB/Windows Admin Shares (T1021.002)**. |
+| **2026-06-16 22:43:04** | `npt-ws01` | Attacker executed identity and privilege discovery commands, ending with `whoami.exe /groups`. | **Permission Groups Discovery (T1069)**. Confirmed account privileges. |
+| **2026-06-16 23:04:16** | `npt-ws01` | Attacker created persistence using a Windows Run registry key launching `NorthpeakSyncTray.ps1`. | **Boot or Logon Autostart Execution: Registry Run Keys (T1547.001)**. |
+| **2026-06-16 23:15:47** | `npt-ws01` | Automated PowerShell beacon contacted `updates.sync-northpeak.com`. | **Command and Control - Web Protocols (T1071.001)**. Automated callback established. |
+| **2026-06-16 23:15+** | `npt-ws01` | Beacon activity observed using predictable timing intervals. | Confirmed automated/scripted C2 channel rather than manual operator activity. |
+| **2026-06-16 23:44:08** | `npt-srv01` | Attacker executed PowerShell `Invoke-WebRequest` to upload `C:\temp\customer_data_export_20260616.csv` to `cdn.sync-northpeak.com`. | **Exfiltration Over C2 Channel (T1041)**. Customer data stolen. |
+| **2026-06-16 23:42:52** | `npt-srv01` | Second RemoteInteractive session established immediately before exfiltration. | Confirmed attacker returned through second session before data theft. |
+| **2026-06-17 00:30:00** | Environment-wide | Investigation window ends. | Attack chain reconstructed across Windows and Linux systems. |
 
 ---
 
 ## 🧾 Final Assessment
 
-<Concise executive-style conclusion summarizing risk, attacker sophistication, and defensive posture.>
+## 🧾 Final Assessment
+
+The NorthPeak Logistics threat hunt identified a complete intrusion lifecycle involving valid-account abuse, remote access, lateral movement, persistence, command-and-control activity, and data exfiltration. The attacker did not rely on malware deployment, vulnerability exploitation, or disabling security controls. Instead, they leveraged legitimate credentials, trusted administrative protocols, and built-in operating system utilities to remain operational while blending into normal activity.
+
+The attacker initially gained access to `npt-ws01` through external RDP access using compromised credentials from `148.64.103.173`. After establishing a foothold, they expanded access through `npt-linux01`, performed privilege and environment discovery, installed offensive tooling (`NetExec`), and used SMB-based lateral movement to access additional Windows systems. The attacker then established persistence through a Windows Run registry key that executed a hidden PowerShell script after user logon.
+
+The investigation also uncovered an automated command-and-control infrastructure using multiple look-alike domains, encoded PowerShell commands, and periodic beacon communications. Cross-source analysis was required to identify the complete C2 infrastructure because network telemetry alone captured only one of the attacker-controlled domains. The attacker ultimately accessed sensitive customer data on `npt-srv01` and exfiltrated `customer_data_export_20260616.csv` to `cdn.sync-northpeak.com` using PowerShell-based HTTPS communication.
+
+The attacker demonstrated a moderate level of operational discipline by maintaining access for several hours while avoiding obvious defensive evasion techniques. Their success was primarily enabled by valid credentials, exposed remote access services, insufficient behavioral monitoring, and the ability to abuse legitimate administrative tools.
+
+Defensive improvements should focus on strengthening identity security, restricting external RDP exposure, monitoring unusual remote authentication patterns, detecting abnormal use of administrative tools, correlating process lineage, and implementing behavioral detections for living-off-the-land activity. This incident highlights that modern intrusions can succeed without traditional malware indicators and reinforces the importance of identity-based detection and comprehensive endpoint telemetry.
 
 ---
 
-## 📎 Analyst Notes
 
-- Report structured for interview and portfolio review  
-- Evidence reproducible via advanced hunting  
-- Techniques mapped directly to MITRE ATT&CK  
-
----
