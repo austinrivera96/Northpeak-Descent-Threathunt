@@ -366,6 +366,527 @@ DeviceProcessEvents
   
 ---
 
+<details>
+<summary id="-flag-6">🚩 <strong>Flag 6: Reachability Technique <Technique Name></strong></summary>
+
+### 🎯 Objective
+`HUNT LEAD: "They checked whether the Windows boxes were reachable before they pivoted, and they did it without dropping a single tool on the box. Tell me how they checked, and the one port they cared about. That port tells you what they were about to do."`
+
+### 📌 Finding
+The attacker used Bash's built-in `/dev/tcp` functionality to test connectivity to a Windows host over `TCP port 3389`, the default port for Remote Desktop Protocol (RDP). Because `/dev/tcp` is a native Bash feature, the attacker was able to verify network reachability without installing or executing any additional network scanning tools. The successful connection check strongly suggests they were preparing to pivot to the Windows workstation using RDP.
+
+### 🔍 Evidence
+
+| Field | Value |
+|------|-------|
+| **Host** | npt-linux01 |
+| **Timestamp** | 2026-06-16T22:02:16.855726Z |
+| **Process** | bash |
+| **Parent Process** | sshd |
+| **Command Line** | `bash -c 'echo > /dev/tcp/<Windows_IP>/3389'` *(connection test using `/dev/tcp`)* |
+
+### 💡 Why it matters
+Using `/dev/tcp` is a stealthy reconnaissance technique because it leverages built-in shell functionality instead of external utilities such as `nc`, `telnet`, or `nmap`. This reduces forensic artifacts while allowing the attacker to confirm that RDP was accessible before attempting lateral movement. Detecting native port checks can reveal attacker reconnaissance that might otherwise evade traditional tool-based detections and provides an early indicator of an impending pivot.
+
+
+### 🔧 KQL Query Used
+```kql
+DeviceNetworkEvents
+| where DeviceName == "npt-linux01"
+| where TimeGenerated  between (datetime(2026-06-16 20:00:00) .. datetime(2026-06-17 00:30:00))
+| where RemotePort == "3389"
+| project TimeGenerated, RemoteIP, RemotePort, InitiatingProcessCommandLine
+| order by TimeGenerated asc
+```
+
+### 🖼️ Screenshot
+<img width="975" height="80" alt="image" src="https://github.com/user-attachments/assets/c178e86f-d3dd-41b0-8840-48a45e460bb7" />
+
+**Answer:**  
+`/dev/tcp, 3389`
+
+</details>
+
+---
+
+<details>
+<summary id="-flag-7">🚩 <strong>Flag 7: Operator tooling <Technique Name></strong></summary>
+
+### 🎯 Objective
+`HUNT LEAD: "Before leaving Linux they kitted out, checked for a couple of capabilities, then committed to installing one tool. Name what they installed."`
+
+### 📌 Finding
+The attacker executed two `which` checks at `2026-06-16T22:25:17.448121Z` and `2026-06-16T22:27:55.924868Z` to verify if any Remote Desktop Protocol (RDP) client utilities were installed on the Linux machine. Following this, they installed `pipx` at `2026-06-16T22:29:11.188108Z` using the `sudo apt-get install -y pipx` command. They then used `pipx` to install `NetExec` at `2026-06-16T22:29:16.741036Z`, providing the attacker with additional capabilities for network discovery, credential validation, and lateral movement.
+
+### 🔍 Evidence
+
+| Field | Value |
+|------|-------|
+| Host | npt-linux01 |
+| Timestamp | 2026-06-16T22:29:16.741036Z |
+| Process | pipx |
+| Parent Process | python |
+| Command Line | `pipx install netexec` |
+
+### 💡 Why it matters
+<Explain impact, risk, and relevance>
+
+### 🔧 KQL Query Used
+```kql
+DeviceProcessEvents
+| where DeviceName == "npt-linux01"
+| where AccountName == "sancadmin"
+| project Timestamp, AccountName, ProcessCommandLine, InitiatingProcessCommandLine
+| order by Timestamp asc
+```
+
+
+### 🖼️ Screenshot
+
+<img width="1390" height="536" alt="image" src="https://github.com/user-attachments/assets/6f824fa2-025f-4ce3-a1f6-b4a41716741c" />
+
+### 🛠️ Detection Recommendation
+
+**Answer:**
+Netexec
+<Actionable guidance for defenders>
+
+</details>
+
+---
+
+<details>
+<summary id="-flag-8">🚩 <strong>Flag 8: Lateral Movement Triple <Technique Name></strong></summary>
+
+### 🎯 Objective
+`HUNT LEAD: "Now they come back at the workstation from inside the network. Build me that hop: the account, the internal source, the target."`
+
+### 📌 Finding
+After preparing the Linux host with the required tooling, the attacker used the `sancadmin` account to laterally move from `npt-linux01` (`10.2.0.30`) to `npt-ws01` over `SMB` using `NetExec`. The connection occurred at `2026-06-16T22:32:18.5821153Z`, demonstrating the attacker had successfully pivoted from the compromised Linux system into the Windows environment using valid credentials.
+
+
+
+### 🔍 Evidence
+
+
+| Field | Value |
+|------|-------|
+| Host | npt-linux01 |
+| Timestamp | 2026-06-16T22:32:18.5821153Z |
+| Process | netexec/SMB |
+| Parent Process | python |
+| Command Line | `netexec smb 10.2.0.10 -u sancadmin ...` *(credential arguments omitted)* |
+
+### 💡 Why it matters
+This marks the attacker's transition from reconnaissance into `lateral movement`. Rather than exploiting a vulnerability, they authenticated to a Windows workstation using valid credentials over SMB, allowing them to move deeper into the environment without triggering exploit-based detections.
+
+The use of `NetExec` indicates a hands-on-keyboard operator leveraging legitimate administrative protocols to access internal systems. Because SMB is a trusted protocol in most enterprise networks, this type of activity can blend in with normal administration unless correlated with unusual source hosts, accounts, or command-line activity.
+
+
+### 🔧 KQL Query Used
+Verify the connection to `npt-ws01` at remote ip `10.2.0.10`
+
+```kql
+DeviceNetworkEvents
+| where DeviceName == "npt-linux01"
+| where RemoteIP == "10.2.0.10"
+| where TimeGenerated  between (datetime(2026-06-16 20:00:00) .. datetime(2026-06-17 00:30:00))
+| project TimeGenerated, ActionType, InitiatingProcessCommandLine, RemoteIP
+| order by TimeGenerated desc
+```
+Verify IP address for the connection. 
+```kql
+DeviceLogonEvents
+| where DeviceName == "npt-ws01"
+| where TimeGenerated  between (datetime(2026-06-16 20:00:00) .. datetime(2026-06-17 00:30:00))
+| where AccountName == "sancadmin"
+| project TimeGenerated, AccountName, DeviceName, LogonId, LogonType, RemoteIP
+```
+
+### 🖼️ Screenshot
+[Connection using SMB and Netexec] <img width="975" height="83" alt="image" src="https://github.com/user-attachments/assets/3317dba4-2403-406b-895b-b2ac6d160643" />
+[Remote IP] <img width="975" height="203" alt="image" src="https://github.com/user-attachments/assets/b119f829-a7ea-43bc-ab5b-89e8d1f5e567" />
+
+
+### 🛠️ Detection Recommendation
+
+**Answer:**  
+sancadmin, 10.2.0.30, npt-ws01
+
+</details>
+
+---
+
+<details>
+<summary id="-flag-9">🚩 <strong>Flag 9: Operator PowerShell Lineage <Technique Name></strong></summary>
+
+### 🎯 Objective
+`HUNT LEAD: "That workstation is drowning in PowerShell and nearly all of it is the machine talking to itself. Separate the human at the keyboard from the noise, and tell me what gives them away."`
+
+### 📌 Finding
+<High-level description of the activity>
+
+### 🔍 Evidence
+
+| Field | Value |
+|------|-------|
+| Host | <Placeholder> |
+| Timestamp | <Placeholder> |
+| Process | <Placeholder> |
+| Parent Process | <Placeholder> |
+| Command Line | <Placeholder> |
+
+### 💡 Why it matters
+<Explain impact, risk, and relevance>
+
+### 🔧 KQL Query Used
+<Add KQL here>
+
+### 🖼️ Screenshot
+<Insert screenshot>
+
+### 🛠️ Detection Recommendation
+
+**Hunting Tip:**  
+<Actionable guidance for defenders>
+
+</details>
+
+---
+
+<details>
+<summary id="-flag-10">🚩 <strong>Flag 10: Persistence Full Command <Technique Name></strong></summary>
+
+### 🎯 Objective
+`HUNT LEAD: "They tried their staging script out a few times first, then trusted it enough to make it survive a reboot. Give me the full command they planted to bring it back, path and all."`
+
+### 📌 Finding
+<High-level description of the activity>
+
+### 🔍 Evidence
+
+| Field | Value |
+|------|-------|
+| Host | <Placeholder> |
+| Timestamp | <Placeholder> |
+| Process | <Placeholder> |
+| Parent Process | <Placeholder> |
+| Command Line | <Placeholder> |
+
+### 💡 Why it matters
+<Explain impact, risk, and relevance>
+
+### 🔧 KQL Query Used
+<Add KQL here>
+
+### 🖼️ Screenshot
+<Insert screenshot>
+
+### 🛠️ Detection Recommendation
+
+**Hunting Tip:**  
+<Actionable guidance for defenders>
+
+</details>
+
+---
+
+<details>
+<summary id="-flag-11">🚩 <strong>Flag 11: Beacon Domains, Cross-Source <Technique Name></strong></summary>
+
+### 🎯 Objective
+`HUNT LEAD: "Their channel ran on three look-alike subdomains, but your network record only ever caught one of them. Find all three, in the order they were first contacted, and tell me where the other two were hiding."`
+
+### 📌 Finding
+<High-level description of the activity>
+
+### 🔍 Evidence
+
+| Field | Value |
+|------|-------|
+| Host | <Placeholder> |
+| Timestamp | <Placeholder> |
+| Process | <Placeholder> |
+| Parent Process | <Placeholder> |
+| Command Line | <Placeholder> |
+
+### 💡 Why it matters
+<Explain impact, risk, and relevance>
+
+### 🔧 KQL Query Used
+<Add KQL here>
+
+### 🖼️ Screenshot
+<Insert screenshot>
+
+### 🛠️ Detection Recommendation
+
+**Hunting Tip:**  
+<Actionable guidance for defenders>
+
+</details>
+
+---
+
+<details>
+<summary id="-flag-12">🚩 <strong>Flag 12: Encoded Beacon Decode <Technique Name></strong></summary>
+
+### 🎯 Objective
+`HUNT LEAD: "One of those beacons was deliberately wrapped to hide where it was calling. Unwrap it and give me the full address, every parameter on the end."`
+
+### 📌 Finding
+<High-level description of the activity>
+
+### 🔍 Evidence
+
+| Field | Value |
+|------|-------|
+| Host | <Placeholder> |
+| Timestamp | <Placeholder> |
+| Process | <Placeholder> |
+| Parent Process | <Placeholder> |
+| Command Line | <Placeholder> |
+
+### 💡 Why it matters
+<Explain impact, risk, and relevance>
+
+### 🔧 KQL Query Used
+<Add KQL here>
+
+### 🖼️ Screenshot
+<Insert screenshot>
+
+### 🛠️ Detection Recommendation
+
+**Hunting Tip:**  
+<Actionable guidance for defenders>
+
+</details>
+
+---
+
+<details>
+<summary id="-flag-13">🚩 <strong>Flag 13: Encoded-Command Discrimination <Technique Name></strong></summary>
+
+### 🎯 Objective
+`HUNT LEAD: "Pull every wrapped command and most of them are innocent system chatter, not the operator. Name what's generating that chatter, and prove to me you can tell it apart from the few that matter."`
+
+### 📌 Finding
+<High-level description of the activity>
+
+### 🔍 Evidence
+
+| Field | Value |
+|------|-------|
+| Host | <Placeholder> |
+| Timestamp | <Placeholder> |
+| Process | <Placeholder> |
+| Parent Process | <Placeholder> |
+| Command Line | <Placeholder> |
+
+### 💡 Why it matters
+<Explain impact, risk, and relevance>
+
+### 🔧 KQL Query Used
+<Add KQL here>
+
+### 🖼️ Screenshot
+<Insert screenshot>
+
+### 🛠️ Detection Recommendation
+
+**Hunting Tip:**  
+<Actionable guidance for defenders>
+
+</details>
+
+---
+
+<details>
+<summary id="-flag-14">🚩 <strong>Flag 14: Beacon Rhythm <Technique Name></strong></summary>
+
+### 🎯 Objective
+`HUNT LEAD: "Look at the spacing between the early check-ins to the first domain. Don't give me a number. Tell me what that rhythm proves about what's driving the channel."`
+
+### 📌 Finding
+<High-level description of the activity>
+
+### 🔍 Evidence
+
+| Field | Value |
+|------|-------|
+| Host | <Placeholder> |
+| Timestamp | <Placeholder> |
+| Process | <Placeholder> |
+| Parent Process | <Placeholder> |
+| Command Line | <Placeholder> |
+
+### 💡 Why it matters
+<Explain impact, risk, and relevance>
+
+### 🔧 KQL Query Used
+<Add KQL here>
+
+### 🖼️ Screenshot
+<Insert screenshot>
+
+### 🛠️ Detection Recommendation
+
+**Hunting Tip:**  
+<Actionable guidance for defenders>
+
+</details>
+
+---
+
+<details>
+<summary id="-flag-15">🚩 <strong>Flag 15: Crown Jewel Exfil <Technique Name></strong></summary>
+
+### 🎯 Objective
+`HUNT LEAD: "Last thing they did was take the crown jewels out. Name the file, the host it left from, and where it went."`
+
+### 📌 Finding
+<High-level description of the activity>
+
+### 🔍 Evidence
+
+| Field | Value |
+|------|-------|
+| Host | <Placeholder> |
+| Timestamp | <Placeholder> |
+| Process | <Placeholder> |
+| Parent Process | <Placeholder> |
+| Command Line | <Placeholder> |
+
+### 💡 Why it matters
+<Explain impact, risk, and relevance>
+
+### 🔧 KQL Query Used
+<Add KQL here>
+
+### 🖼️ Screenshot
+<Insert screenshot>
+
+### 🛠️ Detection Recommendation
+
+**Hunting Tip:**  
+<Actionable guidance for defenders>
+
+</details>
+
+---
+
+<details>
+<summary id="-flag-16">🚩 <strong>Flag 16: Exfil Session Correlation <Technique Name></strong></summary>
+
+### 🎯 Objective
+`HUNT LEAD: "That export went out while they were live in a remote session on the server, and there were two sessions. Tell me which one they were in when they did it: the first, or the one they came back through."`
+
+### 📌 Finding
+<High-level description of the activity>
+
+### 🔍 Evidence
+
+| Field | Value |
+|------|-------|
+| Host | <Placeholder> |
+| Timestamp | <Placeholder> |
+| Process | <Placeholder> |
+| Parent Process | <Placeholder> |
+| Command Line | <Placeholder> |
+
+### 💡 Why it matters
+<Explain impact, risk, and relevance>
+
+### 🔧 KQL Query Used
+<Add KQL here>
+
+### 🖼️ Screenshot
+<Insert screenshot>
+
+### 🛠️ Detection Recommendation
+
+**Hunting Tip:**  
+<Actionable guidance for defenders>
+
+</details>
+
+---
+
+<details>
+<summary id="-flag-17">🚩 <strong>Flag 17: Holding the Ground <Technique Name></strong></summary>
+
+### 🎯 Objective
+`HUNT LEAD: "Here's what should bother you. They were hands-on for hours and nothing tripped. Check whether they tore the defences down to manage that. They didn't. So tell me the model, what let them operate this freely without going near the security stack."`
+
+### 📌 Finding
+<High-level description of the activity>
+
+### 🔍 Evidence
+
+| Field | Value |
+|------|-------|
+| Host | <Placeholder> |
+| Timestamp | <Placeholder> |
+| Process | <Placeholder> |
+| Parent Process | <Placeholder> |
+| Command Line | <Placeholder> |
+
+### 💡 Why it matters
+<Explain impact, risk, and relevance>
+
+### 🔧 KQL Query Used
+<Add KQL here>
+
+### 🖼️ Screenshot
+<Insert screenshot>
+
+### 🛠️ Detection Recommendation
+
+**Hunting Tip:**  
+<Actionable guidance for defenders>
+
+</details>
+
+---
+
+<details>
+<summary id="-flag-18">🚩 <strong>Flag 18: Confirming The Foothold's Rights <Technique Name></strong></summary>
+
+### 🎯 Objective
+`HUNT LEAD: "When the operator comes back into the workstation for the second time, before they touch anything else they run a short burst to check who they are and what they can do. The last command in that burst isn't a plain identity check, it's testing for one specific thing. Tell me what they were confirming about their own account."`
+
+### 📌 Finding
+<High-level description of the activity>
+
+### 🔍 Evidence
+
+| Field | Value |
+|------|-------|
+| Host | <Placeholder> |
+| Timestamp | <Placeholder> |
+| Process | <Placeholder> |
+| Parent Process | <Placeholder> |
+| Command Line | <Placeholder> |
+
+### 💡 Why it matters
+<Explain impact, risk, and relevance>
+
+### 🔧 KQL Query Used
+<Add KQL here>
+
+### 🖼️ Screenshot
+<Insert screenshot>
+
+### 🛠️ Detection Recommendation
+
+**Hunting Tip:**  
+<Actionable guidance for defenders>
+
+</details>
+
+---
+
 ## Timeline
 
 | Time (UTC)                   | Phase                  | Event                                                                                                                                                                                                                                                                             |
