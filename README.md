@@ -73,13 +73,9 @@ The investigation reconstructs the complete attack chain, identigying the initia
   - [🚩 Flag 18](#-flag-18)
   - [🚩 Flag 19](#-flag-19)
   - [🚩 Flag 20](#-flag-20)
-- [🚨 Detection Gaps & Recommendations](#-detection-gaps--recommendations)
 - [🧾 Final Assessment](#-final-assessment)
-- [📎 Analyst Notes](#-analyst-notes)
 
 ---
-
-## 🧠 Hunt Overview
 
 ## 🧠 Hunt Overview
 
